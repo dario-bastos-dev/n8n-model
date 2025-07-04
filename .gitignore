@@ -1,0 +1,6 @@
+./n8n-data
+./traefik_data
+./redis-data
+./postgres-data
+
+.env
