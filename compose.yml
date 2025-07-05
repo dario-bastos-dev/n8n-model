@@ -1,159 +1,223 @@
 name: n8n-queue
+
 services:
 
-  traefik:
-    image: "traefik"
-    restart: always
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
-      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
-      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./traefik_data:/letsencrypt
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - n8n-network
-
-  postgres:
-    image: ankane/pgvector:latest
-    restart: always
-    container_name: n8n-postgres
-    env_file: .env
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_POSTGRESDB_PASSWORD}
-      - POSTGRES_DB=${DB_POSTGRESDB_DATABASE}
-      - TZ=America/Sao_Paulo
-    volumes:
-      - './postgres-data:/var/lib/postgresql/data'
-    ports:
-      - 5432:5432
-    networks:
-      - n8n-network
-
-  redis:
-    image: redis:alpine
-    restart: always
-    container_name: n8n-redis
-    volumes:
-      - './redis-data:/data'
-    ports:
-      - 6379:6379
-    networks:
-      - n8n-network
-
-  n8n-editor:
-    image: n8nio/n8n:latest
-    container_name: n8n-editor
-    command: start
+  caddy:
+    image: caddy:2-alpine
+    container_name: n8n-caddy
     restart: unless-stopped
     ports:
-      - 127.0.0.1:5678:5678
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.n8n.rule=Host(`${N8N_HOST}`)
-      - traefik.http.routers.n8n.tls=true
-      - traefik.http.routers.n8n.entrypoints=web,websecure
-      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
-      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
-      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
-      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
-      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
-      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
-      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
-      - traefik.http.middlewares.n8n.headers.STSPreload=true
-      - traefik.http.routers.n8n.middlewares=n8n@docker
-    env_file: 
-      - .env
+      - "80:80"      
+      - "443:443"    
+      - "443:443/udp"
     volumes:
-      - ./n8n-data:/home/node/.n8n
-      - ./local-files:/files
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - n8n-network
     depends_on:
-      - postgres
-      - redis
-    
-  n8n_worker:
-    image: n8nio/n8n:latest
-    container_name: n8n-worker
-    command: worker
-    ports:
-      - 127.0.0.1:5677:5678
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.n8n.rule=Host(`${N8N_HOST}`)
-      - traefik.http.routers.n8n.tls=true
-      - traefik.http.routers.n8n.entrypoints=web,websecure
-      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
-      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
-      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
-      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
-      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
-      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
-      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
-      - traefik.http.middlewares.n8n.headers.STSPreload=true
-      - traefik.http.routers.n8n.middlewares=n8n@docker
-    env_file: 
-      - .env
-    volumes:
-      - ./n8n-data:/home/node/.n8n
-      - ./local-files:/files
-    networks:
-      - n8n-network
-    depends_on:
-      - postgres
-      - redis
+      - n8n-main
+      - n8n-webhook
 
-  n8n_webhook:
-    image: n8nio/n8n:latest
-    container_name: n8n-webhook
-    command: webhook
-    ports:
-      - 127.0.0.1:5676:5678
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.n8n.rule=Host(`${N8N_HOST}`)
-      - traefik.http.routers.n8n.tls=true
-      - traefik.http.routers.n8n.entrypoints=web,websecure
-      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
-      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
-      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
-      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
-      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
-      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
-      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
-      - traefik.http.middlewares.n8n.headers.STSPreload=true
-      - traefik.http.routers.n8n.middlewares=n8n@docker
-    env_file: 
-      - .env
+  postgres:
+    image: postgres:16-alpine
+    container_name: n8n-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - ./n8n-data:/home/node/.n8n
-      - ./local-files:/files
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - n8n-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: n8n-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - n8n-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n-main:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n-main
+    restart: unless-stopped
+    command: start
+    environment:
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - NODE_ENV=production
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      
+      # Execution Mode
+      - EXECUTIONS_MODE=queue
+      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=true
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+      
+      # Database Configuration
+      - DB_TYPE=postgresdb
+      - DB_TABLE_PREFIX=n8n_
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      
+      # Redis Configuration
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=${REDIS_DB}
+      
+      # Security
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      
+      # Additional Settings
+      - N8N_LOG_LEVEL=info
+      - N8N_METRICS=false
+      - N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS=true
+      - N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL=true
+      - N8N_METRICS_QUEUE_METRICS_INTERVAL=20
+
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - TZ=${GENERIC_TIMEZONE}
+    volumes:
+      - n8n_data:/home/node/.n8n
     networks:
       - n8n-network
     depends_on:
-      - postgres
-      - redis
-    
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  n8n-worker:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n-worker
+    restart: unless-stopped
+    command: worker --concurrency=${WORKER_CONCURRENCY}
+    environment:
+      # Execution Mode
+      - EXECUTIONS_MODE=queue
+      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=true
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
+      - N8N_GRACEFUL_SHUTDOWN_TIMEOUT=30
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+      
+      # Database Configuration
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      
+      # Redis Configuration
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=${REDIS_DB}
+      
+      # Security
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      
+      # Additional Settings
+      - N8N_LOG_LEVEL=info
+      - N8N_METRICS=false
+      - N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS=true
+      - N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL=true
+      - N8N_METRICS_QUEUE_METRICS_INTERVAL=20
+
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - TZ=${GENERIC_TIMEZONE}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - n8n-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      n8n-main:
+        condition: service_started
+
+  n8n-webhook:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n-webhook
+    restart: unless-stopped
+    command: webhook
+    environment:
+      # Execution Mode
+      - EXECUTIONS_MODE=queue
+      - N8N_DISABLE_PRODUCTION_MAIN_PROCESS=true
+      - QUEUE_HEALTH_CHECK_ACTIVE=true
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+      
+      # Database Configuration
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
+      
+      # Redis Configuration
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - QUEUE_BULL_REDIS_DB=${REDIS_DB}
+      
+      # Security
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      
+      # Additional Settings
+      - N8N_LOG_LEVEL=info
+      - N8N_METRICS=false
+      - N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS=true
+      - N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL=true
+      - N8N_METRICS_QUEUE_METRICS_INTERVAL=20
+
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      - TZ=${GENERIC_TIMEZONE}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - n8n-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      n8n-main:
+        condition: service_started
+
 volumes:
-  n8n-data:
-  traefik_data:
-  redis-data:
-  postgres-data:
+  postgres_data:
+  redis_data:
+  n8n_data:
+  caddy_data:  
+  caddy_config:
 
 networks:
   n8n-network:

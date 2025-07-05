@@ -1,209 +1,317 @@
-# N8N - Ambiente de Produção com Docker Compose
+# N8N Queue Mode - Docker Compose
 
-Este projeto configura um ambiente completo de produção para o N8N (workflow automation tool) usando Docker Compose com arquitetura distribuída, incluindo balanceamento de carga, SSL automático e sistema de filas.
+![N8N Logo](https://docs.n8n.io/assets/images/n8n-logo.png)
 
-## 📋 Sobre o Projeto
+Este projeto configura o N8N em **modo queue** usando Docker Compose, proporcionando uma arquitetura escalável e robusta para automação de workflows.
 
-O N8N é uma ferramenta de automação de workflows que permite conectar diferentes serviços e APIs de forma visual. Este setup oferece:
+## 📋 Índice
 
-- **Arquitetura Distribuída**: Separação entre editor, worker e webhook para melhor performance
-- **Alta Disponibilidade**: Sistema de filas com Redis para processamento distribuído
-- **SSL Automático**: Certificados Let's Encrypt via Traefik
-- **Banco de Dados Robusto**: PostgreSQL com extensão pgvector
-- **Monitoramento**: Métricas integradas para observabilidade
+- [Sobre o Projeto](#-sobre-o-projeto)
+- [Arquitetura](#️-arquitetura)
+- [Pré-requisitos](#-pré-requisitos)
+- [Instalação](#-instalação)
+- [Configuração](#️-configuração)
+- [Uso](#-uso)
+- [Monitoramento](#-monitoramento)
+- [Troubleshooting](#-troubleshooting)
+- [Contribuindo](#-contribuindo)
+- [Licença](#-licença)
+
+## 🚀 Sobre o Projeto
+
+Este setup implementa o N8N em **modo queue** com as seguintes características:
+
+- **Escalabilidade**: Múltiplos workers para processamento paralelo
+- **Alta Disponibilidade**: Separação de responsabilidades entre serviços
+- **Performance**: Redis para gerenciamento de filas
+- **Persistência**: PostgreSQL como banco de dados principal
+- **SSL/TLS**: Caddy como proxy reverso com certificados automáticos
 
 ## 🏗️ Arquitetura
 
+O projeto utiliza uma arquitetura distribuída com os seguintes componentes:
+
 ```text
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐
-│   Traefik   │────│  N8N Editor  │────│ PostgreSQL  │
-│(Load Balancer)   │   (Main UI)  │    │ (Database)  │
-└─────────────┘    └──────────────┘    └─────────────┘
-       │                    │                   │
-       │            ┌──────────────┐           │
-       │────────────│ N8N Worker   │───────────┤
-       │            │ (Processing) │           │
-       │            └──────────────┘           │
-       │                    │                   │
-       │            ┌──────────────┐    ┌─────────────┐
-       └────────────│ N8N Webhook  │────│    Redis    │
-                    │ (Triggers)   │    │   (Queue)   │
-                    └──────────────┘    └─────────────┘
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│    Caddy    │    │  N8N Main   │    │ N8N Worker  │
+│ (Proxy/SSL) │────│ (Interface) │    │(Processor)  │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   └───────┬───────────┘
+       │                           │
+┌─────────────┐            ┌─────────────┐
+│N8N Webhook  │            │    Redis    │
+│ (Endpoints) │            │   (Queue)   │
+└─────────────┘            └─────────────┘
+       │                           │
+       └──────────┬────────────────┘
+                  │
+          ┌─────────────┐
+          │ PostgreSQL  │
+          │ (Database)  │
+          └─────────────┘
 ```
 
 ### Componentes
 
-- **Traefik**: Proxy reverso com SSL automático e balanceamento de carga
-- **N8N Editor**: Interface principal para criação e edição de workflows
-- **N8N Worker**: Processa execuções de workflows em background
-- **N8N Webhook**: Gerencia triggers e webhooks externos
-- **PostgreSQL**: Banco de dados principal com extensão pgvector
-- **Redis**: Sistema de filas para comunicação entre componentes
+- **Caddy**: Proxy reverso com SSL automático via Let's Encrypt
+- **N8N Main**: Interface principal do N8N (editor de workflows)
+- **N8N Worker**: Processador de execuções em background
+- **N8N Webhook**: Manipulador dedicado de webhooks
+- **PostgreSQL**: Banco de dados para persistência
+- **Redis**: Sistema de filas para coordenação
 
-## 🚀 Como Usar
+## 📋 Pré-requisitos
 
-### Pré-requisitos
+- Docker 20.10+
+- Docker Compose 2.0+
+- Domínio próprio com DNS configurado
+- Portas 80 e 443 liberadas no firewall
 
-- Docker e Docker Compose instalados
-- Domínio configurado apontando para seu servidor
-- Portas 80 e 443 disponíveis
+## 🔧 Instalação
 
-### 1. Configuração Inicial
-
-1. Clone este repositório:
+1. **Clone o repositório**:
 
 ```bash
 git clone https://github.com/dario-bastos-dev/n8n-model.git
-cd N8N
+cd n8n-model
 ```
 
-2. Copie o arquivo de exemplo de variáveis de ambiente:
+2. **Configure as variáveis de ambiente**:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Edite o arquivo `.env` com suas configurações:
+3. **Edite o arquivo `.env`** com suas configurações:
 
 ```bash
-# Traefik - Email para certificados SSL
-SSL_EMAIL=seu-email@exemplo.com
-
-# Postgres - Senha do banco de dados
-DB_POSTGRESDB_PASSWORD=sua_senha_super_segura
-
-# N8N - Seu domínio
-N8N_EDITOR_BASE_URL=n8n.seudominio.com
-N8N_HOST=n8n.seudominio.com
-WEBHOOK_URL=https://n8n.seudominio.com
-
-# N8N - Chave de criptografia (gere uma aleatória)
-N8N_ENCRYPTION_KEY=sua_chave_de_criptografia_muito_segura
+nano .env
 ```
 
-### 2. Iniciando os Serviços
+4. **Execute o script de inicialização**:
 
-Execute o comando para subir todos os containers:
+```bash
+chmod +x init.sh
+./init.sh
+```
+
+## ⚙️ Configuração
+
+### Variáveis de Ambiente Obrigatórias
+
+Edite o arquivo `.env` com os seguintes valores:
+
+```bash
+# Configuração Básica
+N8N_HOST=n8n.seudominio.com
+N8N_PROTOCOL=https
+WEBHOOK_URL=https://n8n.seudominio.com
+GENERIC_TIMEZONE=America/Sao_Paulo
+
+# Segurança - IMPORTANTE: Gere uma chave segura!
+N8N_ENCRYPTION_KEY=sua-chave-de-32-bytes-aqui
+
+# PostgreSQL
+POSTGRES_USER=n8n
+POSTGRES_PASSWORD=sua-senha-postgres-segura
+POSTGRES_DB=n8n
+
+# Worker
+WORKER_CONCURRENCY=5
+```
+
+### Gerando Chave de Criptografia
+
+```bash
+openssl rand -hex 32
+```
+
+### Configuração do Caddy
+
+Edite o arquivo `Caddyfile` e substitua:
+
+- `seu-email@dominio.com` pelo seu email
+- `n8n.seu-dominio.com` pelo seu domínio
+
+## 🚀 Uso
+
+### Iniciar os Serviços
 
 ```bash
 docker-compose up -d
 ```
 
-### 3. Verificando o Status
-
-Verifique se todos os containers estão rodando:
+### Verificar Status
 
 ```bash
 docker-compose ps
 ```
 
-### 4. Primeiro Acesso
-
-1. Acesse `https://n8n.seudominio.com`
-2. Configure sua conta de administrador
-3. Comece a criar seus workflows!
-
-## ⚙️ Configurações Avançadas
-
-### Variáveis de Ambiente Principais
-
-| Variável                 | Descrição                             | Exemplo               |
-| ------------------------ | ------------------------------------- | --------------------- |
-| `SSL_EMAIL`              | Email para certificados Let's Encrypt | `admin@empresa.com`   |
-| `N8N_HOST`               | Domínio do N8N                        | `n8n.empresa.com`     |
-| `DB_POSTGRESDB_PASSWORD` | Senha do PostgreSQL                   | `senha123!`           |
-| `N8N_ENCRYPTION_KEY`     | Chave para criptografia               | `chave-super-secreta` |
-
-### Volumes Persistentes
-
-- `./n8n-data`: Dados do N8N (workflows, credenciais, etc.)
-- `./postgres-data`: Dados do PostgreSQL
-- `./redis-data`: Dados do Redis
-- `./traefik_data`: Certificados SSL do Traefik
-- `./local-files`: Arquivos locais acessíveis pelo N8N
-
-## 🔧 Manutenção
-
-### Backup
-
-Para fazer backup dos dados importantes:
+### Visualizar Logs
 
 ```bash
-# Backup do banco de dados
-docker-compose exec postgres pg_dump -U postgres n8n > backup_n8n_$(date +%Y%m%d).sql
+# Todos os serviços
+docker-compose logs -f
 
-# Backup dos dados do N8N
-tar -czf backup_n8n_data_$(date +%Y%m%d).tar.gz ./n8n-data
+# Serviço específico
+docker-compose logs -f n8n-main
 ```
 
-### Logs
-
-Para visualizar logs de um serviço específico:
+### Parar os Serviços
 
 ```bash
-# Logs do N8N Editor
-docker-compose logs -f n8n-editor
-
-# Logs do Worker
-docker-compose logs -f n8n_worker
-
-# Logs do Traefik
-docker-compose logs -f traefik
-```
-
-### Atualizações
-
-Para atualizar o N8N para a versão mais recente:
-
-```bash
-docker-compose pull
 docker-compose down
-docker-compose up -d
 ```
 
-## 🔍 Monitoramento
+### Backup dos Dados
 
-O N8N está configurado com métricas habilitadas. Você pode acessar:
+```bash
+# Backup PostgreSQL
+docker-compose exec postgres pg_dump -U n8n n8n > backup_$(date +%Y%m%d_%H%M%S).sql
 
-- Métricas do N8N: `https://n8n.seudominio.com/metrics`
-- Dashboard do Traefik: `http://seu-servidor:8080` (apenas localmente)
+# Backup completo dos volumes
+docker run --rm -v n8n-queue_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres_backup.tar.gz -C /data .
+```
 
-## 🚨 Solução de Problemas
+## 📊 Monitoramento
+
+### Verificar Saúde dos Serviços
+
+```bash
+# Status geral
+docker-compose ps
+
+# Logs em tempo real
+docker-compose logs -f
+
+# Verificar uso de recursos
+docker stats
+```
+
+### Métricas do N8N
+
+O N8N está configurado com métricas habilitadas. As métricas incluem:
+
+- Estatísticas da fila
+- Métricas de workflow
+- Eventos do message bus
+
+### Verificar Redis
+
+```bash
+docker-compose exec redis redis-cli info
+```
+
+### Verificar PostgreSQL
+
+```bash
+docker-compose exec postgres psql -U n8n -d n8n -c "\dt"
+```
+
+## 🔧 Troubleshooting
 
 ### Problemas Comuns
 
-1. **Certificado SSL não gerado**:
+#### 1. Serviços não iniciam
 
-   - Verifique se o domínio está apontando corretamente
-   - Confirme que as portas 80 e 443 estão abertas
+```bash
+# Verificar logs
+docker-compose logs
 
-2. **N8N não conecta ao banco**:
+# Reiniciar serviços
+docker-compose restart
+```
 
-   - Verifique as credenciais no arquivo `.env`
-   - Confirme que o PostgreSQL está rodando
+#### 2. Erro de conexão com banco
 
-3. **Workflows não executam**:
-   - Verifique se o Redis está funcionando
-   - Confirme que o Worker está ativo
+```bash
+# Verificar se PostgreSQL está rodando
+docker-compose ps postgres
+
+# Verificar logs do PostgreSQL
+docker-compose logs postgres
+```
+
+#### 3. Problemas de SSL/Certificado
+
+```bash
+# Verificar logs do Caddy
+docker-compose logs caddy
+
+# Verificar configuração DNS
+nslookup n8n.seudominio.com
+```
+
+#### 4. Worker não processa workflows
+
+```bash
+# Verificar logs do worker
+docker-compose logs n8n-worker
+
+# Verificar conexão Redis
+docker-compose exec redis redis-cli ping
+```
 
 ### Comandos Úteis
 
 ```bash
-# Reiniciar todos os serviços
-docker-compose restart
+# Reiniciar apenas um serviço
+docker-compose restart n8n-main
 
-# Parar todos os serviços
-docker-compose down
+# Acessar shell do container
+docker-compose exec n8n-main sh
 
-# Ver uso de recursos
-docker stats
+# Limpar volumes (CUIDADO: perde dados)
+docker-compose down -v
 
-# Acessar container do N8N
-docker-compose exec n8n-editor sh
+# Verificar portas em uso
+netstat -tlnp | grep :80
 ```
 
-## 📚 Recursos Adicionais
+## 🔒 Segurança
 
-- [Documentação Oficial do N8N](https://docs.n8n.io/)
-- [Comunidade N8N](https://community.n8n.io/)
-- [Templates de Workflows](https://n8n.io/workflows/)
+### Recomendações
+
+1. **Use senhas fortes** para PostgreSQL e chave de criptografia
+2. **Configure firewall** adequadamente
+3. **Mantenha containers atualizados**:
+
+   ```bash
+   docker-compose pull
+   docker-compose down
+   docker-compose up -d
+   ```
+
+4. **Monitore logs** regularmente
+5. **Faça backups** periódicos
+
+### Atualizações
+
+```bash
+# Baixar imagens atualizadas
+docker-compose pull
+
+# Aplicar atualizações
+docker-compose up -d
+
+# Remover imagens antigas
+docker image prune
+```
+
+## 📈 Escalabilidade
+
+### Adicionar Mais Workers
+
+Para aumentar a capacidade de processamento, edite o `compose.yml` e adicione mais workers:
+
+```yaml
+n8n-worker-2:
+  image: docker.n8n.io/n8nio/n8n:latest
+  container_name: n8n-worker-2
+  # ... mesma configuração do n8n-worker
+```
+
+### Ajustar Concorrência
+
+Modifique a variável `WORKER_CONCURRENCY` no arquivo `.env` para controlar quantos jobs cada worker processa simultaneamente.

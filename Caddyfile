@@ -1,0 +1,16 @@
+
+{
+    email seu-email@dominio.com
+}
+
+n8n.seu-dominio.com {
+    # Proxy reverso para o n8n principal
+    reverse_proxy n8n-main:5678
+    
+    # Roteamento específico para webhooks
+    @webhook {
+        path /webhook/*
+        path /webhook-test/*
+    }
+    reverse_proxy @webhook n8n-webhook:5678
+}
