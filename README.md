@@ -14,8 +14,6 @@ Este projeto configura o N8N em **modo queue** usando Docker Compose, proporcion
 - [Uso](#-uso)
 - [Monitoramento](#-monitoramento)
 - [Troubleshooting](#-troubleshooting)
-- [Contribuindo](#-contribuindo)
-- [Licença](#-licença)
 
 ## 🚀 Sobre o Projeto
 
