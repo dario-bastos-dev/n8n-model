@@ -15,7 +15,7 @@ mkdir -p ./data/n8n
 
 # Start services
 echo "Starting services..."
-sudo docker-compose up -d
+sudo docker compose up -d
 
 # Wait for services to be ready
 echo "Waiting for services to be ready..."
@@ -23,14 +23,14 @@ sleep 10
 
 # Check service health
 echo "Checking service status..."
-sudo docker-compose ps
+sudo docker compose ps
 
 echo ""
 echo "==================================="
 echo "Setup complete!"
 echo "==================================="
-echo "Access editor: http://${N8N_HOST}"
+echo "Access editor: https://${N8N_HOST}"
 echo ""
-echo "To view logs: docker-compose logs -f"
-echo "To stop: docker-compose down"
+echo "To view logs: docker compose logs -f"
+echo "To stop: docker compose down"
 echo ""
