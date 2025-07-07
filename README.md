@@ -94,6 +94,12 @@ chmod +x init.sh
 ./init.sh
 ```
 
+5. **Habilite o script de Restart**:
+
+```bash
+chmod +x restart.sh
+```
+
 ## ⚙️ Configuração
 
 ### Variáveis de Ambiente Obrigatórias
@@ -160,6 +166,12 @@ docker-compose logs -f n8n-main
 
 ```bash
 docker-compose down
+```
+
+### Reiniciar os Serviços
+
+```bash
+./restart.sh
 ```
 
 ### Backup dos Dados

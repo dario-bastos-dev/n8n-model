@@ -21,7 +21,7 @@ services:
       - n8n-webhook
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: n8n-postgres
     restart: unless-stopped
     ports:
@@ -41,7 +41,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: n8n-redis
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
@@ -56,7 +56,7 @@ services:
       retries: 5
 
   n8n-main:
-    image: docker.n8n.io/n8nio/n8n:latest
+    image: n8nio/n8n:latest
     container_name: n8n-main
     restart: unless-stopped
     command: start
@@ -94,7 +94,7 @@ services:
       
       # Additional Settings
       - N8N_LOG_LEVEL=info
-      - N8N_METRICS=false
+      - N8N_METRICS=true
       - N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS=true
       - N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL=true
       - N8N_METRICS_QUEUE_METRICS_INTERVAL=20
@@ -112,7 +112,7 @@ services:
         condition: service_healthy
 
   n8n-worker:
-    image: docker.n8n.io/n8nio/n8n:latest
+    image: n8nio/n8n:latest
     container_name: n8n-worker
     restart: unless-stopped
     command: worker --concurrency=${WORKER_CONCURRENCY}
@@ -128,6 +128,7 @@ services:
       
       # Database Configuration
       - DB_TYPE=postgresdb
+      - DB_TABLE_PREFIX=n8n_
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
@@ -144,7 +145,7 @@ services:
       
       # Additional Settings
       - N8N_LOG_LEVEL=info
-      - N8N_METRICS=false
+      - N8N_METRICS=true
       - N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS=true
       - N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL=true
       - N8N_METRICS_QUEUE_METRICS_INTERVAL=20
@@ -164,7 +165,7 @@ services:
         condition: service_started
 
   n8n-webhook:
-    image: docker.n8n.io/n8nio/n8n:latest
+    image: n8nio/n8n:latest
     container_name: n8n-webhook
     restart: unless-stopped
     command: webhook
@@ -179,6 +180,7 @@ services:
       
       # Database Configuration
       - DB_TYPE=postgresdb
+      - DB_TABLE_PREFIX=n8n_
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
@@ -195,7 +197,7 @@ services:
       
       # Additional Settings
       - N8N_LOG_LEVEL=info
-      - N8N_METRICS=false
+      - N8N_METRICS=true
       - N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS=true
       - N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL=true
       - N8N_METRICS_QUEUE_METRICS_INTERVAL=20
