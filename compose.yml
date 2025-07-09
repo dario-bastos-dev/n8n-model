@@ -44,7 +44,7 @@ services:
     image: redis:8-alpine
     container_name: n8n-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
@@ -89,7 +89,8 @@ services:
       # Redis Configuration
       - QUEUE_BULL_REDIS_HOST=redis
       - QUEUE_BULL_REDIS_PORT=6379
-      - QUEUE_BULL_REDIS_DB=${REDIS_DB}
+      - QUEUE_BULL_REDIS_DB=0
+      - QUEUE_BULL_PREFIX=n8n_
       
       # Security
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}

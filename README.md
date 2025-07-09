@@ -90,7 +90,7 @@ nano .env
 4. **Execute o script de inicialização**:
 
 ```bash
-chmod +x init.sh
+chmod +x init.sh 
 ./init.sh
 ```
 
@@ -143,29 +143,29 @@ Edite o arquivo `Caddyfile` e substitua:
 ### Iniciar os Serviços
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Verificar Status
 
 ```bash
-docker-compose ps
+docker compose ps
 ```
 
 ### Visualizar Logs
 
 ```bash
 # Todos os serviços
-docker-compose logs -f
+docker compose logs -f
 
 # Serviço específico
-docker-compose logs -f n8n-main
+docker compose logs -f n8n-main
 ```
 
 ### Parar os Serviços
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### Reiniciar os Serviços
@@ -178,7 +178,7 @@ docker-compose down
 
 ```bash
 # Backup PostgreSQL
-docker-compose exec postgres pg_dump -U n8n n8n > backup_$(date +%Y%m%d_%H%M%S).sql
+docker compose exec postgres pg_dump -U n8n n8n > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Backup completo dos volumes
 docker run --rm -v n8n-queue_postgres_data:/data -v $(pwd):/backup alpine tar czf /backup/postgres_backup.tar.gz -C /data .
@@ -190,10 +190,10 @@ docker run --rm -v n8n-queue_postgres_data:/data -v $(pwd):/backup alpine tar cz
 
 ```bash
 # Status geral
-docker-compose ps
+docker compose ps
 
 # Logs em tempo real
-docker-compose logs -f
+docker compose logs -f
 
 # Verificar uso de recursos
 docker stats
@@ -210,13 +210,13 @@ O N8N está configurado com métricas habilitadas. As métricas incluem:
 ### Verificar Redis
 
 ```bash
-docker-compose exec redis redis-cli info
+docker compose exec redis redis-cli info
 ```
 
 ### Verificar PostgreSQL
 
 ```bash
-docker-compose exec postgres psql -U n8n -d n8n -c "\dt"
+docker compose exec postgres psql -U n8n -d n8n -c "\dt"
 ```
 
 ## 🔧 Troubleshooting
@@ -227,27 +227,27 @@ docker-compose exec postgres psql -U n8n -d n8n -c "\dt"
 
 ```bash
 # Verificar logs
-docker-compose logs
+docker compose logs
 
 # Reiniciar serviços
-docker-compose restart
+docker compose restart
 ```
 
 #### 2. Erro de conexão com banco
 
 ```bash
 # Verificar se PostgreSQL está rodando
-docker-compose ps postgres
+docker compose ps postgres
 
 # Verificar logs do PostgreSQL
-docker-compose logs postgres
+docker compose logs postgres
 ```
 
 #### 3. Problemas de SSL/Certificado
 
 ```bash
 # Verificar logs do Caddy
-docker-compose logs caddy
+docker compose logs caddy
 
 # Verificar configuração DNS
 nslookup n8n.seudominio.com
@@ -257,23 +257,23 @@ nslookup n8n.seudominio.com
 
 ```bash
 # Verificar logs do worker
-docker-compose logs n8n-worker
+docker compose logs n8n-worker
 
 # Verificar conexão Redis
-docker-compose exec redis redis-cli ping
+docker compose exec redis redis-cli ping
 ```
 
 ### Comandos Úteis
 
 ```bash
 # Reiniciar apenas um serviço
-docker-compose restart n8n-main
+docker compose restart n8n-main
 
 # Acessar shell do container
-docker-compose exec n8n-main sh
+docker compose exec n8n-main sh
 
 # Limpar volumes (CUIDADO: perde dados)
-docker-compose down -v
+docker compose down -v
 
 # Verificar portas em uso
 netstat -tlnp | grep :80
@@ -288,9 +288,9 @@ netstat -tlnp | grep :80
 3. **Mantenha containers atualizados**:
 
    ```bash
-   docker-compose pull
-   docker-compose down
-   docker-compose up -d
+   docker compose pull
+   docker compose down
+   docker compose up -d
    ```
 
 4. **Monitore logs** regularmente
@@ -300,10 +300,10 @@ netstat -tlnp | grep :80
 
 ```bash
 # Baixar imagens atualizadas
-docker-compose pull
+docker compose pull
 
 # Aplicar atualizações
-docker-compose up -d
+docker compose up -d
 
 # Remover imagens antigas
 docker image prune
